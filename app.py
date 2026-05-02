@@ -382,7 +382,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown('<span class="upload-label">drop a pdf</span>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("", type=["pdf"], label_visibility="collapsed")
+    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"], label_visibility="collapsed")
 
     if uploaded_file and st.session_state.stats["filename"] != uploaded_file.name:
         with st.spinner("reading your document…"):
