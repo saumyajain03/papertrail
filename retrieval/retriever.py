@@ -1,14 +1,13 @@
 """
 Retrieval module using ChromaDB as the vector store.
-Chunks are stored with their SBERT embeddings and page number metadata.
+Chunks are stored with their fastembed embeddings and page number metadata.
 Queries are embedded locally and searched via ChromaDB's query interface.
 """
 
 import chromadb
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 import config
 from langdetect import detect
-import torch
 
 # Load the embedding model once — shared across indexing and querying
 _model = None
@@ -16,8 +15,7 @@ _model = None
 def _get_model():
     global _model
     if _model is None:
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        _model = SentenceTransformer(config.EMBEDDING_MODEL, device=device)
+        _model = TextEmbedding(model_name=config.EMBEDDING_MODEL)
     return _model
 
 
@@ -75,7 +73,8 @@ def search_query(query: str, collection: chromadb.Collection, top_k: int = 3) ->
 
     model = _get_model()
     print(f"\nEmbedding query: '{query}'")
-    query_embedding = model.encode(query).tolist()
+    query_embedding_generator = model.embed([query])
+    query_embedding = list(query_embedding_generator)[0].tolist()
 
     results = collection.query(
         query_embeddings=[query_embedding],

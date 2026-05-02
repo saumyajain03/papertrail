@@ -1,5 +1,5 @@
 chromadb
-sentence-transformers
+fastembed
 pymupdf
 langdetect
 openai

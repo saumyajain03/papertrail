@@ -1,22 +1,22 @@
 """
-Embedding generation using sentence-transformers (local, free).
+Embedding generation using fastembed (lightweight ONNX runtime).
 Uses the configured multilingual model from config.py.
 """
 
-from sentence_transformers import SentenceTransformer
-import torch
+from fastembed import TextEmbedding
 
 def embed_chunks(chunks: list, model_name: str) -> list:
-    """Generate embeddings locally using sentence-transformers."""
-    print(f"Loading embedding model: {model_name}")
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
-    model = SentenceTransformer(model_name, device=device)
+    """Generate embeddings locally using fastembed."""
+    print(f"Loading lightweight embedding model: {model_name}")
+    # fastembed downloads and caches the model automatically
+    model = TextEmbedding(model_name=model_name)
     
-    print("Generating embeddings locally (no API calls)...")
+    print("Generating embeddings locally (no API calls, low memory)...")
     texts = [chunk["text"] for chunk in chunks]
     
-    # Batch encode all chunks at once — much faster than one-by-one
-    embeddings = model.encode(texts, show_progress_bar=True)
+    # Generate embeddings generator and convert to list
+    embeddings_generator = model.embed(texts)
+    embeddings = list(embeddings_generator)
     
     for i, chunk in enumerate(chunks):
         chunk["embedding"] = embeddings[i].tolist()

@@ -389,17 +389,21 @@ with st.sidebar:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(uploaded_file.getvalue())
                 tmp_path = tmp.name
-            pages          = loader.load_pdf(tmp_path)
-            chunks         = chunking.chunk_text(pages, config.CHUNK_SIZE, config.CHUNK_OVERLAP)
-            embedded_chunks= embedding.embed_chunks(chunks, config.EMBEDDING_MODEL)
-            collection     = retriever.build_vectorstore(embedded_chunks)
-            st.session_state.collection     = collection
-            st.session_state.stats          = {"filename": uploaded_file.name, "pages": len(pages), "chunks": len(chunks)}
-            st.session_state.chat_history   = []
-            st.session_state.internal_history = []
-            st.session_state.last_retrieved_chunks = []
-            os.remove(tmp_path)
-            st.rerun()
+            try:
+                pages          = loader.load_pdf(tmp_path)
+                chunks         = chunking.chunk_text(pages, config.CHUNK_SIZE, config.CHUNK_OVERLAP)
+                embedded_chunks= embedding.embed_chunks(chunks, config.EMBEDDING_MODEL)
+                collection     = retriever.build_vectorstore(embedded_chunks)
+                st.session_state.collection     = collection
+                st.session_state.stats          = {"filename": uploaded_file.name, "pages": len(pages), "chunks": len(chunks)}
+                st.session_state.chat_history   = []
+                st.session_state.internal_history = []
+                st.session_state.last_retrieved_chunks = []
+                os.remove(tmp_path)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error processing document: {str(e)}")
+                os.remove(tmp_path)
 
     if st.session_state.stats["filename"]:
         name = st.session_state.stats["filename"]
@@ -496,38 +500,41 @@ if prompt:
             st.markdown(f'<div class="user-bubble">{prompt}</div>', unsafe_allow_html=True)
 
         with st.chat_message("assistant"):
-            # Agentic Query Expansion
-            with st.spinner("agentic reasoning: optimizing query…"):
-                optimized_query = llm.rewrite_query(prompt, st.session_state.internal_history)
-                # Show the user the agent at work!
-                if optimized_query.lower() != prompt.lower():
-                    st.markdown(f'<div style="font-size: 11px; color: #b8a9a3; margin-bottom: 8px;">✦ optimized search: {optimized_query}</div>', unsafe_allow_html=True)
-            
-            with st.spinner("finding the right pages…"):
-                top_chunks  = retriever.search_query(optimized_query, st.session_state.collection, top_k=7)
-                best_score  = top_chunks[0]["score"] if top_chunks else 0
-                THRESHOLD   = 0.25
-                if best_score < THRESHOLD and st.session_state.last_retrieved_chunks:
-                    top_chunks = st.session_state.last_retrieved_chunks
-                elif best_score >= THRESHOLD:
-                    st.session_state.last_retrieved_chunks = top_chunks
-                answer = llm.generate_answer(prompt, top_chunks, st.session_state.internal_history)
+            try:
+                # Agentic Query Expansion
+                with st.spinner("agentic reasoning: optimizing query…"):
+                    optimized_query = llm.rewrite_query(prompt, st.session_state.internal_history)
+                    # Show the user the agent at work!
+                    if optimized_query.lower() != prompt.lower():
+                        st.markdown(f'<div style="font-size: 11px; color: #b8a9a3; margin-bottom: 8px;">✦ optimized search: {optimized_query}</div>', unsafe_allow_html=True)
+                
+                with st.spinner("finding the right pages…"):
+                    top_chunks  = retriever.search_query(optimized_query, st.session_state.collection, top_k=7)
+                    best_score  = top_chunks[0]["score"] if top_chunks else 0
+                    THRESHOLD   = 0.25
+                    if best_score < THRESHOLD and st.session_state.last_retrieved_chunks:
+                        top_chunks = st.session_state.last_retrieved_chunks
+                    elif best_score >= THRESHOLD:
+                        st.session_state.last_retrieved_chunks = top_chunks
+                    answer = llm.generate_answer(prompt, top_chunks, st.session_state.internal_history)
 
-            if is_refusal(answer):
-                st.markdown("""
-                    <div class="refusal-box">
-                        <span class="refusal-icon">✧</span>
-                        this one's outside the document — i can only speak to what's written here.
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                clean, pills = render_citations(answer)
-                st.markdown(f'<div class="answer-text">{clean}</div>', unsafe_allow_html=True)
-                if pills:
-                    st.markdown(f'<div class="citations-wrap">{pills}</div>', unsafe_allow_html=True)
+                if is_refusal(answer):
+                    st.markdown("""
+                        <div class="refusal-box">
+                            <span class="refusal-icon">✧</span>
+                            this one's outside the document — i can only speak to what's written here.
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    clean, pills = render_citations(answer)
+                    st.markdown(f'<div class="answer-text">{clean}</div>', unsafe_allow_html=True)
+                    if pills:
+                        st.markdown(f'<div class="citations-wrap">{pills}</div>', unsafe_allow_html=True)
 
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-        st.session_state.internal_history.extend([
-            {"role": "user",      "content": prompt},
-            {"role": "assistant", "content": answer},
-        ])
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                st.session_state.internal_history.extend([
+                    {"role": "user",      "content": prompt},
+                    {"role": "assistant", "content": answer},
+                ])
+            except Exception as e:
+                st.error(f"Error answering question: {str(e)}")

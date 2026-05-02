@@ -1,9 +1,8 @@
-.env
 .venv/
-venv/
 __pycache__/
 *.pyc
+.env
+.git/
 .DS_Store
-.chroma/
-*.sqlite3
 vectorstore/
+data/
