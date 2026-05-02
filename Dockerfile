@@ -3,8 +3,13 @@
 FROM python:3.11-slim
 
 # Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED True
-ENV PORT 8501
+ENV PYTHONUNBUFFERED=True
+ENV PORT=8501
+
+# Restrict threading to save RAM on 512MB limits
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV OPENBLAS_NUM_THREADS=1
 
 # Set up the working directory
 WORKDIR /app

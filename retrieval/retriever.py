@@ -15,7 +15,7 @@ _model = None
 def _get_model():
     global _model
     if _model is None:
-        _model = TextEmbedding(model_name=config.EMBEDDING_MODEL)
+        _model = TextEmbedding(model_name=config.EMBEDDING_MODEL, threads=1)
     return _model
 
 
