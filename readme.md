@@ -11,6 +11,8 @@
 
 It has been heavily optimized to run efficiently on low-memory servers ,while maintaining blistering speed and multilingual support.
 
+![Papertrail App Interface](screenshot.png)
+
 ---
 
 ## ✦ how it works
