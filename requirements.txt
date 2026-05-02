@@ -1,5 +1,6 @@
 chromadb
-fastembed
+requests
+huggingface-hub
 pymupdf
 langdetect
 openai

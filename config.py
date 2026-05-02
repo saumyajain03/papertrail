@@ -7,8 +7,9 @@ load_dotenv()
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 
-# Embedding Configuration (fastembed — lightweight ONNX)
+# Embedding Configuration (Hugging Face Inference API)
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+HF_API_KEY = os.getenv("HF_API_KEY")
 
 # LLM Configuration (Groq — free tier)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")

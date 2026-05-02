@@ -1,22 +1,21 @@
 """
 Retrieval module using ChromaDB as the vector store.
-Chunks are stored with their fastembed embeddings and page number metadata.
-Queries are embedded locally and searched via ChromaDB's query interface.
+Queries are embedded via Hugging Face API and searched via ChromaDB.
 """
 
 import chromadb
-from fastembed import TextEmbedding
+from huggingface_hub import InferenceClient
 import config
 from langdetect import detect
 
-# Load the embedding model once — shared across indexing and querying
-_model = None
-
-def _get_model():
-    global _model
-    if _model is None:
-        _model = TextEmbedding(model_name=config.EMBEDDING_MODEL, threads=1)
-    return _model
+def get_query_embedding(query: str) -> list:
+    """Fetch query embedding from Hugging Face Inference API."""
+    client = InferenceClient(token=config.HF_API_KEY)
+    
+    # Returns numpy array or list
+    res = client.feature_extraction([query], model=config.EMBEDDING_MODEL)
+    embedding = res.tolist() if hasattr(res, "tolist") else res
+    return embedding[0]
 
 
 def build_vectorstore(chunks: list) -> chromadb.Collection:
@@ -71,10 +70,8 @@ def search_query(query: str, collection: chromadb.Collection, top_k: int = 3) ->
     language = detect_language(query)
     print(f"Detected language: {language}")
 
-    model = _get_model()
-    print(f"\nEmbedding query: '{query}'")
-    query_embedding_generator = model.embed([query])
-    query_embedding = list(query_embedding_generator)[0].tolist()
+    print(f"\nEmbedding query via API: '{query}'")
+    query_embedding = get_query_embedding(query)
 
     results = collection.query(
         query_embeddings=[query_embedding],

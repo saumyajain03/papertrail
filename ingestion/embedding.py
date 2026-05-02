@@ -1,25 +1,35 @@
 """
-Embedding generation using fastembed (lightweight ONNX runtime).
-Uses the configured multilingual model from config.py.
+Embedding generation using the free Hugging Face Inference API.
+This completely removes local memory overhead.
 """
 
-from fastembed import TextEmbedding
+from huggingface_hub import InferenceClient
+import config
+import time
+import streamlit as st
 
 def embed_chunks(chunks: list, model_name: str) -> list:
-    """Generate embeddings locally using fastembed."""
-    print(f"Loading lightweight embedding model: {model_name}")
-    # fastembed downloads and caches the model automatically
-    model = TextEmbedding(model_name=model_name, threads=1)
+    """Generate embeddings using Hugging Face API."""
+    print(f"Calling Hugging Face Inference API for model: {model_name}")
+    client = InferenceClient(token=config.HF_API_KEY)
     
-    print("Generating embeddings locally (no API calls, low memory)...")
     texts = [chunk["text"] for chunk in chunks]
     
-    # Generate embeddings generator and convert to list
-    embeddings_generator = model.embed(texts)
-    embeddings = list(embeddings_generator)
+    try:
+        # returns numpy array or list
+        res = client.feature_extraction(texts, model=model_name)
+        embeddings = res.tolist() if hasattr(res, "tolist") else res
+    except Exception as e:
+        if "503" in str(e) or "loading" in str(e).lower():
+            st.warning("Model is waking up on Hugging Face. Waiting 20 seconds...")
+            time.sleep(20)
+            res = client.feature_extraction(texts, model=model_name)
+            embeddings = res.tolist() if hasattr(res, "tolist") else res
+        else:
+            raise e
     
     for i, chunk in enumerate(chunks):
-        chunk["embedding"] = embeddings[i].tolist()
+        chunk["embedding"] = embeddings[i]
     
-    print(f"Embedded {len(chunks)} chunks successfully.")
+    print(f"Embedded {len(chunks)} chunks via API successfully.")
     return chunks
